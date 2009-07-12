@@ -4,6 +4,7 @@ import math
 import time
 import threading
 
+import pango
 import cairo
 import gobject
 import gtk
@@ -32,6 +33,9 @@ DEFAULT_MAP     = [ "1234567890",
                     "ASDFGHJKL:",
                     "zxcvbnm,./",
                     "ZXCVBNM<>?" ]
+
+#SHOW_BLOCK_HINT = False
+SHOW_BLOCK_HINT = True
 
 class Overlay:
   def __init__(self, keymapping_array):
@@ -84,11 +88,20 @@ class Overlay:
       for y in xrange(len(self.keymapping_array)):
         w_block = float(w) / len(self.keymapping_array[y])
         for x in xrange(len(self.keymapping_array[y])):
-          cr.rectangle(x*w_block+(w_block/2)-hf, y*h_block+(h_block/2)-font_size,
-                       font_size*1.2, font_size*1.2)
-#          cr.move_to(x * w_block+(w_block/2), y * h_block + (h_block/2))
-#          cr.show_text(self.keymapping_array[y][x])
-      cr.fill()
+          if SHOW_BLOCK_HINT:
+            cr.rectangle(x*w_block+(w_block/2), y*h_block+(h_block/2),
+                         font_size*1.5, font_size*1.5)
+          else:
+            cr.move_to(x * w_block+(w_block/2), y * h_block+(h_block/2))
+#            cr.show_text(self.keymapping_array[y][x])
+            layout = cr.create_layout()
+            layout.set_text(self.keymapping_array[y][x])
+            desc = pango.FontDescription("sans %s" % font_size)
+            layout.set_font_description(desc)
+            cr.layout_path(layout)
+      cr.set_line_width(2.0)
+      cr.fill_preserve()
+      cr.stroke()
 
       # Set the window shape
       self.overlay_window.shape_combine_mask(self.overlay_bitmap, 0, 0)
@@ -111,21 +124,33 @@ class Overlay:
 
     # Draw our shape into the self.overlay_bitmap using cairo
     cr.set_operator(cairo.OPERATOR_OVER)
+    cr.set_source_rgb(1, .75, 0)
+    cr.paint()
     # generally width > height, so let's see:
     # 25px looks good on my 1280x800, which is about... 2% of the screen size.
     # Let's do it.
     font_size = int(w*0.03)
     border_width = 2
 
+    cr.set_font_size(font_size)
     h_block = float(h) / len(self.keymapping_array)
     for y in xrange(len(self.keymapping_array)):
       w_block = float(w) / len(self.keymapping_array[y])
       for x in xrange(len(self.keymapping_array[y])):
         cr.set_source_rgb(1, 1, 1)
         cr.move_to(x * w_block + (w_block/2), y * h_block + (h_block/2))
-        cr.set_font_size(font_size)
-        cr.show_text(self.keymapping_array[y][x])
-    cr.fill()
+#        cr.show_text(self.keymapping_array[y][x])
+          # Draw some text
+        layout = cr.create_layout()
+        layout.set_text(self.keymapping_array[y][x])
+        desc = pango.FontDescription("sans %s" % font_size)
+        layout.set_font_description(desc)
+        cr.layout_path(layout)
+
+    cr.fill_preserve()
+    cr.set_source_rgb(0, 0, 0)
+    cr.set_line_width(2.0)
+    cr.stroke()
 
 
     return True
