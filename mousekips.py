@@ -107,6 +107,10 @@ class KeyPointer:
 
       # Draw our shape into the self.overlay_bitmap using cairo
       cr.set_operator(cairo.OPERATOR_OVER)
+      # generally width > height, so let's see:
+      # 25px looks good on my 1280x800, which is about... 2% of the screen size.
+      # Let's do it.
+      cr.set_font_size(int(w*0.03))
       h_block = float(h) / len(self.keymapping_array)
       for y in xrange(len(self.keymapping_array)):
         w_block = float(w) / len(self.keymapping_array[y])
