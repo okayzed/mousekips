@@ -77,13 +77,17 @@ class Overlay:
       # generally width > height, so let's see:
       # 25px looks good on my 1280x800, which is about... 2% of the screen size.
       # Let's do it.
-      cr.set_font_size(int(w*0.03))
+      font_size = int(w*0.03)
+      hf = font_size/5.0
+      cr.set_font_size(font_size)
       h_block = float(h) / len(self.keymapping_array)
       for y in xrange(len(self.keymapping_array)):
         w_block = float(w) / len(self.keymapping_array[y])
         for x in xrange(len(self.keymapping_array[y])):
-          cr.move_to(x * w_block+(w_block/2), y * h_block + (h_block/2))
-          cr.show_text(self.keymapping_array[y][x])
+          cr.rectangle(x*w_block+(w_block/2)-hf, y*h_block+(h_block/2)-font_size,
+                       font_size*1.2, font_size*1.2)
+#          cr.move_to(x * w_block+(w_block/2), y * h_block + (h_block/2))
+#          cr.show_text(self.keymapping_array[y][x])
       cr.fill()
 
       # Set the window shape
@@ -117,7 +121,7 @@ class Overlay:
     for y in xrange(len(self.keymapping_array)):
       w_block = float(w) / len(self.keymapping_array[y])
       for x in xrange(len(self.keymapping_array[y])):
-        cr.set_source_rgb(.5, .75, .5)
+        cr.set_source_rgb(1, 1, 1)
         cr.move_to(x * w_block + (w_block/2), y * h_block + (h_block/2))
         cr.set_font_size(font_size)
         cr.show_text(self.keymapping_array[y][x])
