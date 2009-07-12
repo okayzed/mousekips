@@ -19,6 +19,9 @@ GCONF_DIR       = "/apps/mousekips"
 LAUNCH_KEY      = "launch"
 LAYOUT_KEY      = "%s/layout" % (GCONF_DIR)
 MOVEMENT_KEY    = "%s/movement" % (GCONF_DIR)
+FONT_NAME_KEY   = "%s/font_name" % (GCONF_DIR)
+FONT_SIZE_KEY   = "%s/font_size" % (GCONF_DIR)
+BLOCK_HINT_KEY  = "%s/block_hint" % (GCONF_DIR)
 
 DEFAULT_MVMT    = { "h" : "left",
                     "j" : "down",
@@ -33,26 +36,40 @@ DEFAULT_MAP     = [ "1234567890",
                     "ASDFGHJKL:",
                     "zxcvbnm,./",
                     "ZXCVBNM<>?" ]
-
-#SHOW_BLOCK_HINT = False
-SHOW_BLOCK_HINT = True
+FONT_NAME       = "sans"
+FONT_SIZE       = 25
 
 class Overlay:
   def __init__(self, keymapping_array):
     self.keymapping_array = keymapping_array
+    self.font_name = FONT_NAME
+    self.font_size = FONT_SIZE
+    self.old_h = None
+    self.old_w = None
+
     self.overlay_window = gtk.Window()
     self.overlay_window.set_decorated(False)
     self.overlay_window.fullscreen()
     self.overlay_window.set_keep_above(True)
+
     self.drawing_area = gtk.DrawingArea()
     self.drawing_area.connect('configure-event', self.overlay_cb)
     self.drawing_area.connect('expose-event', self.expose_cb)
     self.overlay_window.add(self.drawing_area)
+
+    self.show_block_hint = True
+
     self.overlay_window.show_all()
     self.hide()
 
-    self.old_h = None
-    self.old_w = None
+  def setup_fonts(self, font_name, font_size):
+    if font_name:
+      self.font_name = font_name
+    if font_size:
+      self.font_size = int(font_size)
+
+  def set_block_hint(self, boo):
+    self.show_block_hint = boo
 
   def hide(self):
     print 'Hiding Overlay'
@@ -81,25 +98,24 @@ class Overlay:
       # generally width > height, so let's see:
       # 25px looks good on my 1280x800, which is about... 2% of the screen size.
       # Let's do it.
-      font_size = int(w*0.03)
-      hf = font_size/5.0
-      cr.set_font_size(font_size)
+      hf = self.font_size/5.0
+      cr.set_font_size(self.font_size)
       h_block = float(h) / len(self.keymapping_array)
       for y in xrange(len(self.keymapping_array)):
         w_block = float(w) / len(self.keymapping_array[y])
         for x in xrange(len(self.keymapping_array[y])):
-          if SHOW_BLOCK_HINT:
+          if self.show_block_hint:
             cr.rectangle(x*w_block+(w_block/2), y*h_block+(h_block/2),
-                         font_size*1.5, font_size*1.5)
+                         self.font_size*1.5, self.font_size*1.5)
           else:
             cr.move_to(x * w_block+(w_block/2), y * h_block+(h_block/2))
 #            cr.show_text(self.keymapping_array[y][x])
             layout = cr.create_layout()
             layout.set_text(self.keymapping_array[y][x])
-            desc = pango.FontDescription("sans %s" % font_size)
+            desc = pango.FontDescription("%s %s" % (self.font_name, self.font_size))
             layout.set_font_description(desc)
             cr.layout_path(layout)
-      cr.set_line_width(2.0)
+      cr.set_line_width(1.0)
       cr.fill_preserve()
       cr.stroke()
 
@@ -129,10 +145,9 @@ class Overlay:
     # generally width > height, so let's see:
     # 25px looks good on my 1280x800, which is about... 2% of the screen size.
     # Let's do it.
-    font_size = int(w*0.03)
     border_width = 2
 
-    cr.set_font_size(font_size)
+    cr.set_font_size(self.font_size)
     h_block = float(h) / len(self.keymapping_array)
     for y in xrange(len(self.keymapping_array)):
       w_block = float(w) / len(self.keymapping_array[y])
@@ -143,13 +158,13 @@ class Overlay:
           # Draw some text
         layout = cr.create_layout()
         layout.set_text(self.keymapping_array[y][x])
-        desc = pango.FontDescription("sans %s" % font_size)
+        desc = pango.FontDescription("%s %s" % (self.font_name, self.font_size))
         layout.set_font_description(desc)
         cr.layout_path(layout)
 
     cr.fill_preserve()
     cr.set_source_rgb(0, 0, 0)
-    cr.set_line_width(2.0)
+    cr.set_line_width(1.0)
     cr.stroke()
 
 
@@ -172,12 +187,10 @@ class KeyPointer:
     self.finish_keyval = gtk.keysyms.Return
     self.finish_keycode = self.keymap.get_entries_for_keyval(self.finish_keyval)[0][0]
 
-
     self.setup_movementkeys(DEFAULT_MVMT)
     self.setup_keymapping(DEFAULT_MAP)
-    self.init_gconf(GCONF_DIR)
 
-    self.overlay = Overlay(self.keymapping_array)
+    self.init_gconf(GCONF_DIR)
 
   def init_gconf(self, app_dir):
     self.gconf = gconf.client_get_default ()
@@ -189,39 +202,18 @@ class KeyPointer:
 
   def read_gconf(self, app_dir):
     gconf_keymappings = self.gconf.get_list(LAYOUT_KEY, gconf.VALUE_STRING)
+    gconf_font_size = self.gconf.get_int(FONT_SIZE_KEY)
+    gconf_font_name = self.gconf.get_string(FONT_NAME_KEY)
+    gconf_block_hint = self.gconf.get_bool(BLOCK_HINT_KEY)
+
 
     keymappings = []
     for line in gconf_keymappings:
       keymappings.append(line.strip())
 
     self.setup_keymapping(keymappings)
-
-
-
-  def gconf_cb(self, *args):
-    # One of our settings changed, probably should re-read gconf data
-    self.read_gconf(GCONF_DIR)
-
-  def handle_screen(self):
-    w = self.screen.width_in_pixels
-    h = self.screen.height_in_pixels
-    self.overlay.show(w, h)
-    print 'Grabbing Keyboard Focus'
-    self.root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,
-                                  X.CurrentTime)
-    print 'Placing pointer'
-    self.screen_handler()
-    try:
-      self.display.ungrab_keyboard(X.CurrentTime)
-      self.display.flush()
-      print 'Finished placing pointer'
-    except:
-      gtk.main_quit()
-    self.overlay.hide()
-
-  def launch_cb(self, keybinding):
-    t = threading.Thread(target=self.handle_screen)
-    t.start()
+    self.overlay.setup_fonts(gconf_font_name, gconf_font_size)
+    self.overlay.set_block_hint(gconf_block_hint)
 
   def setup_movementkeys(self, mapping_dict):
     self.movement_dict = mapping_dict
@@ -242,82 +234,104 @@ class KeyPointer:
         keyval = gtk.gdk.unicode_to_keyval(ord(mapping_array[y][x]))
         self.keyboard_keyvals[keyval] = (x, y)
 
-  def keypress_cb(self, e):
-    # Find the coordinates of the key pressed
+    self.overlay = Overlay(mapping_array)
 
-    try:
-      # Check if this is a keypress event (not a release or button, etc)
-      if e.__class__ is not Xlib.protocol.event.KeyPress:
-        return
-      keycode = e.detail
-      state = e.state
+  def gconf_cb(self, *args):
+    # One of our settings changed, probably should re-read gconf data
+    self.read_gconf(GCONF_DIR)
 
-      w = self.screen.width_in_pixels
-      h = self.screen.height_in_pixels
-      # Find out if there are any modifiers being pressed
-      # If ctrl + movement key is being pressed, move over by some amount
-      if state & X.ControlMask and keycode in self.movement_keycodes:
-        print "Control Hold Movement Keys"
-        movement = self.movement_keycodes[keycode]
-        # move the cursor a little
-        # Not sure how to calculate the amount to move by?
-        # Maybe take the smallest h_block, w_block we have and divide into thirds?
-        h_block = float(h) / self.max_height / 3
-        w_block = float(w) / self.max_width / 3
+  def launch_cb(self, keybinding):
+    t = threading.Thread(target=self.handle_screen)
+    t.start()
 
-        cursor_position = self.root.query_pointer()
-        x = cursor_position.root_x
-        y = cursor_position.root_y
-        to_x, to_y = x, y
-        if movement == 'left':
-          to_x = x - w_block
-        if movement == 'down':
-          to_y = y + h_block
-        if movement == 'up':
-          to_y = y - w_block
-        if movement == 'right':
-          to_x = x + w_block
-
-      else:
-        keyval_tuple = self.keymap.translate_keyboard_state(e.detail, e.state, e.type)
-        keyval, group, level, modifiers = keyval_tuple
-        x, y = self.keyboard_keyvals[keyval]
-        h_block = float(h) / len(self.keymapping_array)
-        w_block = float(w) / len(self.keymapping_array[y])
-      # divide the width by the number of rows we have and multiply by x to
-      # figure out where the cursor goes
-
-        to_x = w_block * x + (w_block / 2)
-        to_y = h_block * y + (h_block / 2)
-
-      print to_x, to_y
-      self.root.warp_pointer(to_x, to_y)
-    except KeyError, v:
-      pass
-    return e.detail == self.finish_keycode
-
-  def display_hints(self):
+  def handle_screen(self):
     w = self.screen.width_in_pixels
     h = self.screen.height_in_pixels
-    h_block = float(h) / len(self.keymapping_array)
-    for y in xrange(len(self.keymapping_array)):
-      w_block = float(w) / len(self.keymapping_array[y])
-      for x in xrange(len(self.keymapping_array)):
-        pass
-    self.display.flush()
+    self.overlay.show(w, h)
+    print 'Grabbing Keyboard Focus'
+    self.root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,
+                                  X.CurrentTime)
+    print 'Placing pointer'
+    self.handle_keypresses()
+    try:
+      self.display.ungrab_keyboard(X.CurrentTime)
+      self.display.flush()
+      print 'Finished placing pointer'
+    except:
+      gtk.main_quit()
+    self.overlay.hide()
 
-  def screen_handler(self):
+
+  def handle_keypress(self, e):
+    # Find the coordinates of the key pressed
+    # Check if this is a keypress event (not a release or button, etc)
+    if e.__class__ is not Xlib.protocol.event.KeyPress:
+      return
+    # Check if this a movement or absolute mapping. 
+    keyval_tuple = self.keymap.translate_keyboard_state(e.detail, e.state, e.type)
+    keyval, group, level, modifiers = keyval_tuple
+    keycode = e.detail
+    state = e.state
+
+    if keyval not in self.keyboard_keyvals and \
+       keycode not in self.movement_keycodes:
+      return e.detail == self.finish_keycode
+
+    w = self.screen.width_in_pixels
+    h = self.screen.height_in_pixels
+    # Find out if there are any modifiers being pressed
+    # If ctrl + movement key is being pressed, move over by some amount
+    if state & X.ControlMask and keycode in self.movement_keycodes:
+      print "Control Hold Movement Keys"
+      movement = self.movement_keycodes[keycode]
+      # move the cursor a little
+      # Not sure how to calculate the amount to move by?
+      # Maybe take the smallest h_block, w_block we have and divide into thirds?
+      h_block = float(h) / self.max_height / 3
+      w_block = float(w) / self.max_width / 3
+
+      cursor_position = self.root.query_pointer()
+      x = cursor_position.root_x
+      y = cursor_position.root_y
+      to_x, to_y = x, y
+      if movement == 'left':
+        to_x = x - w_block
+      if movement == 'down':
+        to_y = y + h_block
+      if movement == 'up':
+        to_y = y - w_block
+      if movement == 'right':
+        to_x = x + w_block
+    else:
+      print 'Moving Pointer'
+      x, y = self.keyboard_keyvals[keyval]
+      h_block = float(h) / len(self.keymapping_array)
+      w_block = float(w) / len(self.keymapping_array[y])
+    # divide the width by the number of rows we have and multiply by x to
+    # figure out where the cursor goes
+
+      to_x = w_block * x + (w_block / 2)
+      to_y = h_block * y + (h_block / 2)
+
+    print to_x, to_y
+    self.root.warp_pointer(to_x, to_y)
+    return e.detail == self.finish_keycode
+
+  def handle_keypresses(self):
     self.root.change_attributes(event_mask = X.KeyPressMask)
     self.screen = self.display.screen()
 
     while True:
       event = self.root.display.next_event()
+      gtk.gdk.threads_enter()
       try:
-        if self.keypress_cb(event):
+        if self.handle_keypress(event):
           break
       except Exception, e:
         print e
         break
+      gtk.gdk.threads_leave()
+    gtk.gdk.threads_leave()
     self.root.change_attributes(event_mask = X.NoEventMask)
     self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
     self.display.allow_events(X.AsyncPointer, X.CurrentTime)
