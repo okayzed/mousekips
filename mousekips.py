@@ -33,65 +33,32 @@ DEFAULT_MAP     = [ "1234567890",
                     "zxcvbnm,./",
                     "ZXCVBNM<>?" ]
 
-class KeyPointer:
-  def __init__(self):
-    self.display = Display ()
-    self.screen = self.display.screen ()
-    self.root = self.screen.root
-    self.keymap = gtk.gdk.keymap_get_default ()
-    self.finish_keyval = gtk.keysyms.Return
-    self.finish_keycode = self.keymap.get_entries_for_keyval(self.finish_keyval)[0][0]
-
-    self.overlay_window = None
-
-    self.setup_movementkeys(DEFAULT_MVMT)
-    self.setup_keymapping(DEFAULT_MAP)
-    self.init_gconf(GCONF_DIR)
-
-    self.build_overlay()
-
-
-  def init_gconf(self, app_dir):
-    self.gconf = gconf.client_get_default ()
-    self.gconf.add_dir (app_dir, gconf.CLIENT_PRELOAD_NONE)
-    self.gconf.notify_add (LAYOUT_KEY, self.gconf_cb)
-    self.gconf.notify_add (MOVEMENT_KEY, self.gconf_cb)
-
-    self.read_gconf(app_dir)
-
-  def read_gconf(self, app_dir):
-    gconf_keymappings = self.gconf.get_list(LAYOUT_KEY, gconf.VALUE_STRING)
-
-    keymappings = []
-    for line in gconf_keymappings:
-      keymappings.append(line.strip())
-
-    self.setup_keymapping(keymappings)
-
-  def build_overlay(self):
-    if self.overlay_window:
-      self.overlay_window.destroy()
+class Overlay:
+  def __init__(self, keymapping_array):
+    self.keymapping_array = keymapping_array
     self.overlay_window = gtk.Window()
     self.overlay_window.set_decorated(False)
-    self.overlay_window.maximize()
+    self.overlay_window.fullscreen()
     self.overlay_window.set_keep_above(True)
-    self.hide_overlay()
+    self.drawing_area = gtk.DrawingArea()
+    self.drawing_area.connect('configure-event', self.overlay_cb)
+    self.drawing_area.connect('expose-event', self.expose_cb)
+    self.overlay_window.add(self.drawing_area)
+    self.overlay_window.show_all()
+    self.hide()
 
     self.old_h = None
     self.old_w = None
 
-  def hide_overlay(self):
+  def hide(self):
     print 'Hiding Overlay'
     gtk.gdk.threads_enter()
     self.overlay_window.hide()
     gtk.gdk.threads_leave()
-    pass
 
-  def show_overlay(self):
+  def show(self, w, h):
     print 'Showing Overlay'
     gtk.gdk.threads_enter()
-    w = self.screen.width_in_pixels
-    h = self.screen.height_in_pixels
     if h != self.old_h or w != self.old_w:
       print "Rebuilding Overlay"
       self.old_h = h
@@ -115,7 +82,7 @@ class KeyPointer:
       for y in xrange(len(self.keymapping_array)):
         w_block = float(w) / len(self.keymapping_array[y])
         for x in xrange(len(self.keymapping_array[y])):
-          cr.move_to(x * w_block, y * h_block)
+          cr.move_to(x * w_block+(w_block/2), y * h_block + (h_block/2))
           cr.show_text(self.keymapping_array[y][x])
       cr.fill()
 
@@ -127,12 +94,89 @@ class KeyPointer:
     self.overlay_window.present()
     gtk.gdk.threads_leave()
 
+  def overlay_cb(self, win, event):
+    x, y, w, h = win.get_allocation()
+    self.drawing_area.set_size_request(w, h)
+    self.pixmap = gtk.gdk.Pixmap(win.window, w, h)
+    cr = self.pixmap.cairo_create()
+
+    # Clear the self.overlay_bitmap
+    cr.set_source_rgb(0, 0, 0)
+    cr.set_operator(cairo.OPERATOR_DEST_OUT)
+    cr.paint()
+
+    # Draw our shape into the self.overlay_bitmap using cairo
+    cr.set_operator(cairo.OPERATOR_OVER)
+    # generally width > height, so let's see:
+    # 25px looks good on my 1280x800, which is about... 2% of the screen size.
+    # Let's do it.
+    font_size = int(w*0.03)
+    border_width = 2
+
+    h_block = float(h) / len(self.keymapping_array)
+    for y in xrange(len(self.keymapping_array)):
+      w_block = float(w) / len(self.keymapping_array[y])
+      for x in xrange(len(self.keymapping_array[y])):
+        cr.set_source_rgb(.5, .75, .5)
+        cr.move_to(x * w_block + (w_block/2), y * h_block + (h_block/2))
+        cr.set_font_size(font_size)
+        cr.show_text(self.keymapping_array[y][x])
+    cr.fill()
+
+
+    return True
+
+  def expose_cb(self, win, event):
+    x , y, width, height = event.area
+    win.window.draw_drawable(win.get_style().bg_gc[gtk.STATE_NORMAL],
+                                self.pixmap, x, y, x, y, width, height)
+    return False
+
+
+
+class KeyPointer:
+  def __init__(self):
+    self.display = Display ()
+    self.screen = self.display.screen ()
+    self.root = self.screen.root
+    self.keymap = gtk.gdk.keymap_get_default ()
+    self.finish_keyval = gtk.keysyms.Return
+    self.finish_keycode = self.keymap.get_entries_for_keyval(self.finish_keyval)[0][0]
+
+
+    self.setup_movementkeys(DEFAULT_MVMT)
+    self.setup_keymapping(DEFAULT_MAP)
+    self.init_gconf(GCONF_DIR)
+
+    self.overlay = Overlay(self.keymapping_array)
+
+  def init_gconf(self, app_dir):
+    self.gconf = gconf.client_get_default ()
+    self.gconf.add_dir (app_dir, gconf.CLIENT_PRELOAD_NONE)
+    self.gconf.notify_add (LAYOUT_KEY, self.gconf_cb)
+    self.gconf.notify_add (MOVEMENT_KEY, self.gconf_cb)
+
+    self.read_gconf(app_dir)
+
+  def read_gconf(self, app_dir):
+    gconf_keymappings = self.gconf.get_list(LAYOUT_KEY, gconf.VALUE_STRING)
+
+    keymappings = []
+    for line in gconf_keymappings:
+      keymappings.append(line.strip())
+
+    self.setup_keymapping(keymappings)
+
+
+
   def gconf_cb(self, *args):
     # One of our settings changed, probably should re-read gconf data
     self.read_gconf(GCONF_DIR)
 
   def handle_screen(self):
-    self.show_overlay()
+    w = self.screen.width_in_pixels
+    h = self.screen.height_in_pixels
+    self.overlay.show(w, h)
     print 'Grabbing Keyboard Focus'
     self.root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,
                                   X.CurrentTime)
@@ -144,7 +188,7 @@ class KeyPointer:
       print 'Finished placing pointer'
     except:
       gtk.main_quit()
-    self.hide_overlay()
+    self.overlay.hide()
 
   def launch_cb(self, keybinding):
     t = threading.Thread(target=self.handle_screen)
