@@ -105,8 +105,17 @@ class Overlay:
         w_block = float(w) / len(self.keymapping_array[y])
         for x in xrange(len(self.keymapping_array[y])):
           if self.show_block_hint:
-            cr.rectangle(x*w_block+(w_block/2), y*h_block+(h_block/2),
-                         self.font_size*1.5, self.font_size*1.5)
+            bh_y =  y*h_block
+            bh_y += (h_block/2)
+
+            bh_x =  x*w_block
+            bh_x += (w_block/2)
+            cr.move_to(bh_x, bh_y)
+            cr.arc(bh_x, bh_y, 10.0, 0, 2 * math.pi);
+
+            bh_y += self.font_size / 4
+            bh_x -= self.font_size / 4
+            cr.rectangle(bh_x, bh_y, self.font_size*1.5, self.font_size*1.5)
           else:
             cr.move_to(x * w_block+(w_block/2), y * h_block+(h_block/2))
 #            cr.show_text(self.keymapping_array[y][x])
@@ -140,7 +149,7 @@ class Overlay:
 
     # Draw our shape into the self.overlay_bitmap using cairo
     cr.set_operator(cairo.OPERATOR_OVER)
-    cr.set_source_rgb(1, .75, 0)
+    cr.set_source_rgb(.8, .2, .1)
     cr.paint()
     # generally width > height, so let's see:
     # 25px looks good on my 1280x800, which is about... 2% of the screen size.
@@ -152,20 +161,28 @@ class Overlay:
     for y in xrange(len(self.keymapping_array)):
       w_block = float(w) / len(self.keymapping_array[y])
       for x in xrange(len(self.keymapping_array[y])):
-        cr.set_source_rgb(1, 1, 1)
-        cr.move_to(x * w_block + (w_block/2), y * h_block + (h_block/2))
+        fr_y =  y*h_block
+        fr_y += (h_block/2)
+
+        fr_x =  x*w_block
+        fr_x += (w_block/2)
+#        cr.move_to(fr_x, fr_y)
+#        cr.arc(fr_x, fr_y, 10.0, 0, 2 * math.pi);
+
 #        cr.show_text(self.keymapping_array[y][x])
           # Draw some text
+        cr.move_to(fr_x, fr_y)
         layout = cr.create_layout()
         layout.set_text(self.keymapping_array[y][x])
         desc = pango.FontDescription("%s %s" % (self.font_name, self.font_size))
         layout.set_font_description(desc)
         cr.layout_path(layout)
 
-    cr.fill_preserve()
-    cr.set_source_rgb(0, 0, 0)
-    cr.set_line_width(1.0)
-    cr.stroke()
+        cr.set_source_rgb(1, 1, 1)
+        cr.fill_preserve()
+        cr.set_source_rgb(0, 0, 0)
+        cr.set_line_width(1.0)
+        cr.stroke()
 
 
     return True
