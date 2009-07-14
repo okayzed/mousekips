@@ -112,6 +112,7 @@ class GlobalKeyBinding (gobject.GObject, threading.Thread):
                   self.display.allow_events (X.ReplayKeyboard, event.time)
             except Exception, e:
               print e
+        return True
 
     def stop (self):
         self.running = False

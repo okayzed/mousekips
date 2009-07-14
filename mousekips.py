@@ -49,7 +49,6 @@ class Overlay:
 
     self.overlay_window = gtk.Window()
     self.overlay_window.set_decorated(False)
-    self.overlay_window.fullscreen()
     self.overlay_window.set_keep_above(True)
 
     self.drawing_area = gtk.DrawingArea()
@@ -81,6 +80,7 @@ class Overlay:
     print 'Showing Overlay'
     gtk.gdk.threads_enter()
     if h != self.old_h or w != self.old_w:
+      self.overlay_window.set_size_request(w, h)
       print "Rebuilding Overlay"
       self.old_h = h
       self.old_w = w
@@ -132,13 +132,15 @@ class Overlay:
       self.overlay_window.shape_combine_mask(self.overlay_bitmap, 0, 0)
     print "Presenting Overlay"
     # Maybe this shouldn't go in a callback over here. It looks like it is ineffective
+    self.overlay_window.set_size_request(w, h)
+    self.overlay_window.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_MENU)
+    self.overlay_window.move(0, 0)
     self.overlay_window.show()
-    self.overlay_window.present()
+
     gtk.gdk.threads_leave()
 
   def overlay_cb(self, win, event):
     x, y, w, h = win.get_allocation()
-    self.drawing_area.set_size_request(w, h)
     self.pixmap = gtk.gdk.Pixmap(win.window, w, h)
     cr = self.pixmap.cairo_create()
 
@@ -264,7 +266,7 @@ class KeyPointer:
   def handle_screen(self):
     w = self.screen.width_in_pixels
     h = self.screen.height_in_pixels
-    self.overlay.show(w, h)
+    gobject.idle_add(self.overlay.show, w, h)
     print 'Grabbing Keyboard Focus'
     self.root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,
                                   X.CurrentTime)
@@ -340,15 +342,12 @@ class KeyPointer:
 
     while True:
       event = self.root.display.next_event()
-      gtk.gdk.threads_enter()
       try:
         if self.handle_keypress(event):
           break
       except Exception, e:
         print e
         break
-      gtk.gdk.threads_leave()
-    gtk.gdk.threads_leave()
     self.root.change_attributes(event_mask = X.NoEventMask)
     self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
     self.display.allow_events(X.AsyncPointer, X.CurrentTime)
