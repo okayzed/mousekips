@@ -50,6 +50,7 @@ class Overlay:
     self.overlay_window = gtk.Window()
     self.overlay_window.set_decorated(False)
     self.overlay_window.set_keep_above(True)
+    self.overlay_window.stick()
 
     self.drawing_area = gtk.DrawingArea()
     self.drawing_area.connect('configure-event', self.overlay_cb)
@@ -80,7 +81,7 @@ class Overlay:
     print 'Showing Overlay'
     gtk.gdk.threads_enter()
     if h != self.old_h or w != self.old_w:
-      self.overlay_window.set_size_request(w, h)
+#      self.overlay_window.set_size_request(w, h)
       print "Rebuilding Overlay"
       self.old_h = h
       self.old_w = w
@@ -132,10 +133,13 @@ class Overlay:
       self.overlay_window.shape_combine_mask(self.overlay_bitmap, 0, 0)
     print "Presenting Overlay"
     # Maybe this shouldn't go in a callback over here. It looks like it is ineffective
-    self.overlay_window.set_size_request(w, h)
-    self.overlay_window.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_MENU)
-    self.overlay_window.move(0, 0)
+#    self.overlay_window.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_UTILITY)
     self.overlay_window.show()
+    self.overlay_window.present()
+    self.overlay_window.window.set_override_redirect(True)
+    self.overlay_window.window.resize(w, h)
+    self.overlay_window.window.move(0, 0)
+    self.overlay_window.window.fullscreen()
 
     gtk.gdk.threads_leave()
 
