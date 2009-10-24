@@ -100,8 +100,12 @@ class Overlay:
       cr.set_font_size(self.font_size)
       h_block = float(h) / len(self.keymapping_array)
       for y in xrange(len(self.keymapping_array)):
-        w_block = float(w) / len(self.keymapping_array[y])
-        for x in xrange(len(self.keymapping_array[y])):
+        row_width = len(self.keymapping_array[y])
+        if row_width == 0:
+          continue
+
+        w_block = float(w) / row_width
+        for x in xrange(row_width):
           if self.show_block_hint:
             bh_y =  y*h_block
             bh_y += (h_block/2)
@@ -157,9 +161,14 @@ class Overlay:
 
     cr.set_font_size(self.font_size)
     h_block = float(h) / len(self.keymapping_array)
+    print self.keymapping_array
     for y in xrange(len(self.keymapping_array)):
-      w_block = float(w) / len(self.keymapping_array[y])
-      for x in xrange(len(self.keymapping_array[y])):
+      row_width = len(self.keymapping_array[y])
+      if row_width == 0:
+        continue
+
+      w_block = float(w) / row_width
+      for x in xrange(row_width):
         fr_y =  y*h_block
         fr_y += (h_block/2)
 
