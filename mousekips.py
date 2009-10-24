@@ -3,6 +3,7 @@ import globalkeybinding
 import math
 import time
 import threading
+import traceback
 
 import pango
 import cairo
@@ -13,6 +14,8 @@ from gtk import gdk
 import Xlib
 from Xlib.display import Display
 from Xlib import X
+
+import dbus, dbus.glib, dbus.service
 
 
 GCONF_DIR       = "/apps/mousekips"
@@ -73,9 +76,7 @@ class Overlay:
 
   def hide(self):
     print 'Hiding Overlay'
-    gtk.gdk.threads_enter()
     self.overlay_window.hide()
-    gtk.gdk.threads_leave()
 
   def show(self, w, h):
     print 'Showing Overlay'
@@ -264,7 +265,7 @@ class KeyPointer:
     # One of our settings changed, probably should re-read gconf data
     self.read_gconf(GCONF_DIR)
 
-  def launch_cb(self, keybinding):
+  def launch_cb(self, keybinding=None):
     t = threading.Thread(target=self.handle_screen)
     t.start()
 
@@ -351,22 +352,55 @@ class KeyPointer:
         if self.handle_keypress(event):
           break
       except Exception, e:
-        print e
+        traceback.print_exc()
         break
     self.root.change_attributes(event_mask = X.NoEventMask)
     self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
     self.display.allow_events(X.AsyncPointer, X.CurrentTime)
 
-def main():
-  kp = KeyPointer()
+class Server (dbus.service.Object):
+    def __init__(self, *args, **kwargs):
+      self.kp = KeyPointer()
+      dbus.service.Object.__init__(self, *args, **kwargs)
 
-  gtk.gdk.threads_init ()
-  keybinding = globalkeybinding.GlobalKeyBinding (GCONF_DIR, LAUNCH_KEY)
-  keybinding.connect ('activate', kp.launch_cb)
-  keybinding.grab ()
-  keybinding.start ()
+    @dbus.service.method(dbus_interface='mousekips.Events',
+                         in_signature='', out_signature='')
+    def show (self):
+        self.kp.launch_cb()
+        return
 
-  gtk.main ()
+def start_server():
+  gtk.gdk.threads_init()
+  dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+  bus = dbus.SessionBus()
+  name = dbus.service.BusName('mousekips.Server', bus=bus)
+  obj = Server(name, '/')
+  loop = gobject.MainLoop()
+  print 'Listening'
+  loop.run()
 
+def call_server():
+  bus = dbus.SessionBus()
+  server = dbus.Interface(bus.get_object('mousekips.Server', '/'),
+                          'mousekips.Events')
+  server.show()
+
+
+def check_running():
+  bus = dbus.SessionBus()
+  try:
+    bus.get_name_owner('mousekips.Server')
+    # There is already a mousekips instance running, let's get it to show
+    # itself
+    server = dbus.Interface(bus.get_object('mousekips.Server', '/'),
+                            'mousekips.Events')
+    server.show()
+  except dbus.exceptions.DBusException:
+    start_server()
+    
+# Check if an instance is already running - if so, issue the dbus command instead
 if __name__ == "__main__":
-  main()
+  check_running()
+
+
+
