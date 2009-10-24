@@ -80,9 +80,7 @@ class Overlay:
 
   def show(self, w, h):
     print 'Showing Overlay'
-#    gtk.gdk.threads_enter()
     if h != self.old_h or w != self.old_w:
-#      self.overlay_window.set_size_request(w, h)
       print "Rebuilding Overlay"
       self.old_h = h
       self.old_w = w
@@ -120,7 +118,6 @@ class Overlay:
             cr.rectangle(bh_x, bh_y, self.font_size*1.5, self.font_size*1.5)
           else:
             cr.move_to(x * w_block+(w_block/2), y * h_block+(h_block/2))
-#            cr.show_text(self.keymapping_array[y][x])
             layout = cr.create_layout()
             layout.set_text(self.keymapping_array[y][x])
             desc = pango.FontDescription("%s %s" % (self.font_name, self.font_size))
@@ -133,15 +130,11 @@ class Overlay:
       # Set the window shape
       self.overlay_window.shape_combine_mask(self.overlay_bitmap, 0, 0)
     print "Presenting Overlay"
-    # Maybe this shouldn't go in a callback over here. It looks like it is ineffective
-    #    self.overlay_window.window.fullscreen()
-    #    self.overlay_window.window.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_UTILITY)
     self.overlay_window.window.show()
     self.overlay_window.present()
     self.overlay_window.move(0, 0)
     self.overlay_window.window.set_override_redirect(True)
     self.overlay_window.window.move_resize(0, 0, w, h)
-#    gtk.gdk.threads_leave()
 
 
 
@@ -174,11 +167,8 @@ class Overlay:
 
         fr_x =  x*w_block
         fr_x += (w_block/2)
-#        cr.move_to(fr_x, fr_y)
-#        cr.arc(fr_x, fr_y, 10.0, 0, 2 * math.pi);
 
-#        cr.show_text(self.keymapping_array[y][x])
-          # Draw some text
+        # Draw some text
         cr.move_to(fr_x, fr_y)
         layout = cr.create_layout()
         layout.set_text(self.keymapping_array[y][x])
@@ -369,38 +359,38 @@ class Server (dbus.service.Object):
         self.kp.launch_cb()
         return
 
-def start_server():
-  gtk.gdk.threads_init()
-  dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-  bus = dbus.SessionBus()
-  name = dbus.service.BusName('mousekips.Server', bus=bus)
-  obj = Server(name, '/')
-  loop = gobject.MainLoop()
-  print 'Listening'
-  loop.run()
+class InstanceManager:
+  def __init__(self):
+    gtk.gdk.threads_init()
+    self.bus = dbus.SessionBus()
 
-def call_server():
-  bus = dbus.SessionBus()
-  server = dbus.Interface(bus.get_object('mousekips.Server', '/'),
-                          'mousekips.Events')
-  server.show()
+  def start_server(self):
+    dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    name = dbus.service.BusName('mousekips.Server', bus=self.bus)
+    obj = Server(name, '/')
+    loop = gobject.MainLoop()
+    print 'Listening'
+    loop.run()
 
-
-def check_running():
-  bus = dbus.SessionBus()
-  try:
-    bus.get_name_owner('mousekips.Server')
-    # There is already a mousekips instance running, let's get it to show
-    # itself
-    server = dbus.Interface(bus.get_object('mousekips.Server', '/'),
+  def call_server(self):
+    server = dbus.Interface(self.bus.get_object('mousekips.Server', '/'),
                             'mousekips.Events')
     server.show()
-  except dbus.exceptions.DBusException:
-    start_server()
+
+
+  def run(self):
+    try:
+      self.bus.get_name_owner('mousekips.Server')
+      # There is already a mousekips instance running, let's get it to show
+      # itself
+      self.call_server()
+    except dbus.exceptions.DBusException:
+      self.start_server()
     
 # Check if an instance is already running - if so, issue the dbus command instead
 if __name__ == "__main__":
-  check_running()
+  im = InstanceManager()
+  im.run()
 
 
 

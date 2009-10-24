@@ -9,11 +9,10 @@ additionally, one can add movement keys that will adjust the cursor by pressing 
 it uses python-xlib and pygtk to do this business and may halt your computer (or make it appear so) - if that happens, switch to a virtual terminal (Ctrl-Alt-F2) and kill the process. For configuration, gconf is used.
 
 # CONFIGURATION
-mousekips uses gconf for holding configuration data (should this be changed?). Currently the keyboard layout and launch key are stored in gconf.
-
-To set the launch key to ctrl-shift-a, use the following command in a terminal:
-
-  gconftool -s --type string "/apps/mousekips/launch" "<Control><Shift>a"
+mousekips uses gconf for holding configuration data (should this be changed?).
+Currently the keyboard layout is stored in gconf. The launch key is set in the
+window manager to whatever you want it to be - just assign a global shortcut in
+Gnome or Compiz (or whatever) to run mousekips.
 
 To set the layout to qwe,asd,zxc (q is top left and c is bottom right) do:
   gconftool -s --type list --list-type string "/apps/mousekips/layout" "[qwe, asd, zxc]"
