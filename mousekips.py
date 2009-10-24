@@ -1,5 +1,4 @@
 import gconf
-import globalkeybinding
 import math
 import time
 import threading
@@ -63,7 +62,6 @@ class Overlay:
     self.show_block_hint = True
 
     self.overlay_window.show_all()
-    self.hide()
 
   def setup_fonts(self, font_name, font_size):
     if font_name:
@@ -191,12 +189,14 @@ class Overlay:
                                 self.pixmap, x, y, x, y, width, height)
     return False
 
-
+  def destroy(self):
+    self.overlay_window.destroy()
 
 class KeyPointer:
   def __init__(self):
     self.display = Display ()
     self.screen = self.display.screen ()
+    self.overlay = None
     self.root = self.screen.root
     self.keymap = gtk.gdk.keymap_get_default ()
     self.finish_keyval = gtk.keysyms.Return
@@ -206,6 +206,7 @@ class KeyPointer:
     self.setup_keymapping(DEFAULT_MAP)
 
     self.init_gconf(GCONF_DIR)
+    self.launch_cb()
 
   def init_gconf(self, app_dir):
     self.gconf = gconf.client_get_default ()
@@ -249,6 +250,8 @@ class KeyPointer:
         keyval = gtk.gdk.unicode_to_keyval(ord(mapping_array[y][x]))
         self.keyboard_keyvals[keyval] = (x, y)
 
+    if self.overlay:
+      self.overlay.destroy()
     self.overlay = Overlay(mapping_array)
 
   def gconf_cb(self, *args):
