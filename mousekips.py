@@ -78,7 +78,18 @@ class Overlay:
 
   def show(self, w, h):
     print 'Showing Overlay'
+
     if h != self.old_h or w != self.old_w:
+      self.reshape_overlay(w, h)
+
+    print "Presenting Overlay"
+    self.overlay_window.window.show()
+    self.overlay_window.present()
+    self.overlay_window.move(0, 0)
+    self.overlay_window.window.set_override_redirect(True)
+    self.overlay_window.window.move_resize(0, 0, w, h)
+
+  def reshape_overlay(self, w, h):
       print "Rebuilding Overlay"
       self.old_h = h
       self.old_w = w
@@ -131,16 +142,11 @@ class Overlay:
 
       # Set the window shape
       self.overlay_window.shape_combine_mask(self.overlay_bitmap, 0, 0)
-    print "Presenting Overlay"
-    self.overlay_window.window.show()
-    self.overlay_window.present()
-    self.overlay_window.move(0, 0)
-    self.overlay_window.window.set_override_redirect(True)
-    self.overlay_window.window.move_resize(0, 0, w, h)
-
-
 
   def overlay_cb(self, win, event):
+    return self.build_pixmap(win)
+
+  def build_pixmap(self, win):
     x, y, w, h = win.get_allocation()
     self.pixmap = gtk.gdk.Pixmap(win.window, w, h)
     cr = self.pixmap.cairo_create()
@@ -189,8 +195,6 @@ class Overlay:
         cr.set_line_width(1.0)
         cr.stroke()
 
-
-    return True
 
   def expose_cb(self, win, event):
     x , y, width, height = event.area
@@ -294,7 +298,7 @@ class KeyPointer:
     # Check if this is a keypress event (not a release or button, etc)
     if e.__class__ is not Xlib.protocol.event.KeyPress:
       return
-    # Check if this a movement or absolute mapping. 
+    # Check if this a movement or absolute mapping.
     keyval_tuple = self.keymap.translate_keyboard_state(e.detail, e.state, e.type)
     keyval, group, level, modifiers = keyval_tuple
     keycode = e.detail
@@ -398,8 +402,7 @@ class InstanceManager:
       self.call_server()
     except dbus.exceptions.DBusException:
       self.start_server()
-    
-# Check if an instance is already running - if so, issue the dbus command instead
+
 if __name__ == "__main__":
   im = InstanceManager()
   im.run()
