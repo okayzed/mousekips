@@ -248,10 +248,12 @@ class KeyPointer:
   def setup_movementkeys(self, mapping_dict):
     self.movement_dict = mapping_dict
     self.movement_keycodes = {}
+    print mapping_dict
     for key in mapping_dict:
       keyval = gtk.gdk.unicode_to_keyval(ord(key))
-      keycode = self.keymap.get_entries_for_keyval(keyval)[0][0]
-      self.movement_keycodes[keycode] = mapping_dict[key]
+      keyval_entries = self.keymap.get_entries_for_keyval(keyval)
+      for keyval_tuple in keyval_entries:
+        self.movement_keycodes[keyval_tuple] = mapping_dict[key]
 
   def setup_keymapping(self, mapping_array):
     # Map the keys to an x,y pair of where the key falls on the keyboard
@@ -326,9 +328,9 @@ class KeyPointer:
     print "012"
     # Find out if there are any modifiers being pressed
     # If ctrl + movement key is being pressed, move over by some amount
-    if state & X.ControlMask and keycode in self.movement_keycodes:
+    if state & X.ControlMask and (keycode, group, level)  in self.movement_keycodes:
       print "Control Hold Movement Keys"
-      movement = self.movement_keycodes[keycode]
+      movement = self.movement_keycodes[(keycode, group, level)]
       # move the cursor a little
       # Not sure how to calculate the amount to move by?
       # Maybe take the smallest h_block, w_block we have and divide into thirds?
