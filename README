@@ -1,20 +1,30 @@
 #SUMMARY
-mousekips is a keyboard based mouse controller - basically, there is a layout supplied to the program that tells it how you want your keys to be arranged and then it figures out where each key fits onto your screen. 
+mousekips is a keyboard based mouse controller. you supply a layout to
+mousekips that tells it how you want your keys to be arranged and then it
+figures out where each key fits onto your screen.
 
-i.e. if the layout is [ "abc", "def", "ghi" ], pressing 'a' will put the mouse cursor in the top left, b in the center left, c in the bottom left, d in the top middle, etc...
+i.e. if the layout is [ "abc", "def", "ghi" ], pressing 'a' will put the mouse
+cursor in the top left, b in the center left, c in the bottom left, d in the
+top middle, etc...
 
-additionally, one can add movement keys that will adjust the cursor by pressing 'ctrl-key' - it's in the code, it's not really documented yet.
+additionally, one can add movement keys that will adjust the cursor by pressing
+'ctrl-key' - it's in the code, it's not really documented yet.
 
 # DEPENDENCIES
-it uses python-xlib and pygtk to do this business and may halt your computer (or make it appear so) - if that happens, switch to a virtual terminal (Ctrl-Alt-F2) and kill the process. For configuration, gconf is used.
+it uses python-xlib and pygtk to do this business and may halt your computer
+(or make it appear so) - if that happens, switch to a virtual terminal
+(Ctrl-Alt-F2) and kill the process. For configuration, gconf is used.
 
 # CONFIGURATION
-mousekips uses gconf for holding configuration data (should this be changed?).
-Currently the keyboard layout is stored in gconf. The launch key is set in the
-window manager to whatever you want it to be - just assign a global shortcut in
-Gnome or Compiz (or whatever) to run mousekips.
+The easiest way to get setup is to look at setup.sh, change the mappings and
+run it.
+
+You'll notice the configuration is stored in gconf, but there's no launch key.
+The launch key is set in the window manager to whatever you want it to be -
+just assign a global shortcut in Gnome or Compiz (or whatever) to run
+mousekips.
 
 To set the layout to qwe,asd,zxc (q is top left and c is bottom right) do:
   gconftool -s --type list --list-type string "/apps/mousekips/layout" "[qwe, asd, zxc]"
 
-Alternatively, you can add these keys by using a graphical gconf editor, like gconf-editor
+Alternatively, you can add/edit these keys by using a graphical gconf editor, like gconf-editor
