@@ -138,6 +138,7 @@ class Overlay:
             cr.layout_path(layout)
       cr.set_line_width(1.0)
       cr.fill_preserve()
+      cr.set_source_rgb(1, 1, 1)
       cr.stroke()
 
       # Set the window shape
@@ -158,7 +159,7 @@ class Overlay:
 
     # Draw our shape into the self.overlay_bitmap using cairo
     cr.set_operator(cairo.OPERATOR_OVER)
-    cr.set_source_rgb(.8, .2, .1)
+    cr.set_source_rgb(0, 0, 0)
     cr.paint()
     # generally width > height, so let's see:
     # 25px looks good on my 1280x800, which is about... 2% of the screen size.
@@ -208,7 +209,7 @@ class Overlay:
 class KeyPointer:
   def __init__(self):
     self.display = Display ()
-    self.screen = self.display.screen ()
+    self.screen = self.display.screen()
     self.overlay = None
     self.root = self.screen.root
     self.keymap = gtk.gdk.keymap_get_default ()
@@ -280,17 +281,18 @@ class KeyPointer:
     h = self.screen.height_in_pixels
     gobject.idle_add(self.overlay.show, w, h)
     print 'Grabbing Keyboard Focus'
-    self.root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync,
-                                  X.CurrentTime)
+    key_grab = self.root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync, X.CurrentTime)
+    print key_grab
     print 'Placing pointer'
-    self.handle_keypresses()
     try:
+      self.handle_keypresses()
       self.display.ungrab_keyboard(X.CurrentTime)
       self.display.flush()
       print 'Finished placing pointer'
     except:
+      print "Couldn't handle keypresses"
       gtk.main_quit()
-    self.overlay.hide()
+    gobject.idle_add(self.overlay.hide)
 
 
   def handle_keypress(self, e):
@@ -306,6 +308,7 @@ class KeyPointer:
 
     if keyval not in self.keyboard_keyvals and \
        keycode not in self.movement_keycodes:
+      print "Keycode and keyval not in dictionary"
       return e.detail == self.finish_keycode
 
     w = self.screen.width_in_pixels
@@ -353,7 +356,9 @@ class KeyPointer:
     self.screen = self.display.screen()
 
     while True:
+      print "Handling Keyboard Event"
       event = self.root.display.next_event()
+      print event
       try:
         if self.handle_keypress(event):
           break
@@ -362,7 +367,6 @@ class KeyPointer:
         break
     self.root.change_attributes(event_mask = X.NoEventMask)
     self.display.allow_events(X.AsyncKeyboard, X.CurrentTime)
-    self.display.allow_events(X.AsyncPointer, X.CurrentTime)
 
 class Server (dbus.service.Object):
     def __init__(self, *args, **kwargs):
