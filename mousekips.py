@@ -212,7 +212,7 @@ class KeyPointer:
     self.screen = self.display.screen()
     self.overlay = None
     self.root = self.screen.root
-    self.keymap = gtk.gdk.keymap_get_default ()
+    self.keymap = gtk.gdk.keymap_get_default()
     self.finish_keyval = gtk.keysyms.Return
     self.finish_keycode = self.keymap.get_entries_for_keyval(self.finish_keyval)[0][0]
 
@@ -299,12 +299,22 @@ class KeyPointer:
     # Find the coordinates of the key pressed
     # Check if this is a keypress event (not a release or button, etc)
     if e.__class__ is not Xlib.protocol.event.KeyPress:
+      print "Not a KeyPress event"
       return
     # Check if this a movement or absolute mapping.
+    print "QRS"
+    print e.detail, e.state, e.type
+    gtk.gdk.threads_enter()
     keyval_tuple = self.keymap.translate_keyboard_state(e.detail, e.state, e.type)
+    gtk.gdk.threads_leave()
+    print "LMNO"
     keyval, group, level, modifiers = keyval_tuple
+    print keyval
+    print "HIJ"
     keycode = e.detail
+    print "DEF"
     state = e.state
+    print "ABC"
 
     if keyval not in self.keyboard_keyvals and \
        keycode not in self.movement_keycodes:
@@ -313,6 +323,7 @@ class KeyPointer:
 
     w = self.screen.width_in_pixels
     h = self.screen.height_in_pixels
+    print "012"
     # Find out if there are any modifiers being pressed
     # If ctrl + movement key is being pressed, move over by some amount
     if state & X.ControlMask and keycode in self.movement_keycodes:
