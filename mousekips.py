@@ -213,6 +213,9 @@ class KeyPointer:
     self.overlay = None
     self.root = self.screen.root
     self.keymap = gtk.gdk.keymap_get_default()
+
+    self.click_keyval = gtk.keysyms.space
+    self.click_keycode = self.keymap.get_entries_for_keyval(self.click_keyval)[0][0]
     self.finish_keyval = gtk.keysyms.Return
     self.finish_keycode = self.keymap.get_entries_for_keyval(self.finish_keyval)[0][0]
 
@@ -283,8 +286,7 @@ class KeyPointer:
     h = self.screen.height_in_pixels
     gobject.idle_add(self.overlay.show, w, h)
     print 'Grabbing Keyboard Focus'
-    key_grab = self.root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync, X.CurrentTime)
-    print key_grab
+    self.root.grab_keyboard(True, X.GrabModeAsync, X.GrabModeAsync, X.CurrentTime)
     print 'Placing pointer'
     try:
       self.handle_keypresses()
@@ -303,20 +305,28 @@ class KeyPointer:
     if e.__class__ is not Xlib.protocol.event.KeyPress:
       print "Not a KeyPress event"
       return
+
     # Check if this a movement or absolute mapping.
-    print "QRS"
-    print e.detail, e.state, e.type
     gtk.gdk.threads_enter()
     keyval_tuple = self.keymap.translate_keyboard_state(e.detail, e.state, e.type)
     gtk.gdk.threads_leave()
-    print "LMNO"
+
     keyval, group, level, modifiers = keyval_tuple
-    print keyval
-    print "HIJ"
     keycode = e.detail
-    print "DEF"
     state = e.state
-    print "ABC"
+
+    if e.detail == self.click_keycode:
+      # button= 1 left, 2 middle, 3 right
+      def mouse_click(button):
+        self.overlay.hide()
+        Xlib.ext.xtest.fake_input(self.display,Xlib.X.ButtonPress, button)
+        self.display.sync()
+        Xlib.ext.xtest.fake_input(self.display,Xlib.X.ButtonRelease, button)
+        self.display.sync()
+        self.overlay.show(self.overlay.old_w, self.overlay.old_h)
+
+      mouse_click(1)
+
 
     if keyval not in self.keyboard_keyvals and \
        keycode not in self.movement_keycodes:
