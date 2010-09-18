@@ -319,6 +319,7 @@ class KeyPointer:
       # button= 1 left, 2 middle, 3 right
       def mouse_click(button):
         self.overlay.hide()
+        time.sleep(0.10)
         Xlib.ext.xtest.fake_input(self.display,Xlib.X.ButtonPress, button)
         self.display.sync()
         Xlib.ext.xtest.fake_input(self.display,Xlib.X.ButtonRelease, button)
